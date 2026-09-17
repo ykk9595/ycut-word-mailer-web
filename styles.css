@@ -46,8 +46,13 @@ button, input { font: inherit; }
 
 .password-card .brand-icon { margin: 0 auto 18px; }
 .password-card > p { margin-bottom: 24px; color: var(--muted); }
-.password-card form { text-align: left; }
-.password-card .primary-button { margin-top: 18px; }
+.password-card form { text-align: center; }
+.password-card input { text-align: center; }
+.password-card .primary-button {
+  display: flex;
+  width: 50%;
+  margin: 18px auto 0;
+}
 .password-error {
   margin: 14px 0 0;
   color: var(--danger);
