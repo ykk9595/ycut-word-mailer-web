@@ -89,6 +89,43 @@ function formatPhone(value) {
   return /^09\d{8}$/.test(digits) ? `${digits.slice(0, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}` : text(value);
 }
 
+function mapUseCode(value) {
+  const name = text(value);
+  if (/住宅|住家/.test(name)) return "1";
+  if (/店面|店鋪/.test(name)) return "2";
+  if (/辦公/.test(name)) return "3";
+  if (/住辦/.test(name)) return "4";
+  if (/住店/.test(name)) return "5";
+  if (/車位/.test(name)) return "6";
+  if (/廠房/.test(name)) return "7";
+  if (/土地/.test(name)) return "8";
+  if (/倉庫/.test(name)) return "9";
+  return "A";
+}
+
+function mapTypeCode(value) {
+  const name = text(value);
+  if (/無電梯公寓|公寓/.test(name)) return "2";
+  if (/華廈/.test(name)) return "3";
+  if (/大樓/.test(name)) return "4";
+  if (/透天/.test(name)) return "5";
+  if (/別墅/.test(name)) return "6";
+  if (/一般套房/.test(name)) return "7";
+  if (/商務套房/.test(name)) return "8";
+  if (/學生套房/.test(name)) return "9";
+  if (/農舍/.test(name)) return "10";
+  if (/樓中樓/.test(name)) return "11";
+  return "";
+}
+
+function extractFeatureLines(description) {
+  return text(description)
+    .split(/\r?\n/)
+    .map(line => line.replace(/^\s*\d+\s*[.．、]\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
 function normalizeCase(raw) {
   const name = text(raw.caseName);
   const description = text(raw.caseSpec);
@@ -107,24 +144,27 @@ function normalizeCase(raw) {
     [["綠園道"], "綠園道旁機能佳"],
     [["生活機能", "機能"], "生活機能便利"]
   ];
-  const features = [];
-  for (const [needles, output] of featureRules) {
-    if (needles.some(key => description.includes(key) || name.includes(key)) && !features.includes(output)) features.push(output);
-    if (features.length === 5) break;
-  }
-  for (const fallback of ["格局方正好規劃", "採光通風良好", "交通生活便利", "社區環境清幽", "自住置產皆宜"]) {
-    if (features.length === 5) break;
-    if (!features.includes(fallback)) features.push(fallback);
+  const features = extractFeatureLines(description);
+  if (!features.length) {
+    for (const [needles, output] of featureRules) {
+      if (needles.some(key => description.includes(key) || name.includes(key)) && !features.includes(output)) features.push(output);
+      if (features.length === 5) break;
+    }
+    for (const fallback of ["格局方正好規劃", "採光通風良好", "交通生活便利", "社區環境清幽", "自住置產皆宜"]) {
+      if (features.length === 5) break;
+      if (!features.includes(fallback)) features.push(fallback);
+    }
   }
   const allText = `${name}\n${description}`;
-  const typeName = text(raw.typeCode || raw.typeCodeName);
-  const typeCode = /大樓|華廈/.test(typeName) ? "4" : /公寓/.test(typeName) ? "3" : /透天|別墅/.test(typeName) ? "2" : "4";
+  const typeCode = mapTypeCode(raw.typeCode || raw.typeCodeName);
+  const useCode = mapUseCode(raw.useCode || raw.useCodeName);
 
   return {
     listingNo: text(raw.nCaseNo), caseName: name, shortName: `${location}${layout}`.slice(0, 12),
     buildingName: text(raw.buildingName), address: text(raw.addrSimp),
     landPing: number(raw.landShPin), totalPing: number(raw.buiTotPin),
-    mainAuxPing: number(raw.buiMPin) + number(raw.buiAuxPin), typeCode,
+    mainAuxPing: number(raw.buiMPin) + number(raw.buiAuxPin), typeCode, useCode,
+    direction: text(raw.positionName || raw.position || raw.direction),
     primarySchool: text(raw.priSchoolName).replace(/^市立/, ""),
     juniorSchool: text(raw.junSchoolName).replace(/^市立/, ""),
     age: number(raw.buiYear), floorsAbove: Math.trunc(number(raw.upFloor)),
@@ -169,13 +209,15 @@ function patchDocumentXml(xmlText, c) {
   n = findNodes(xml, s => s.startsWith("登記面積") && s.includes("土地持分面積"), "登記面積");
   setIf(n, 5, formatNumber(c.totalPing)); setIf(n, 8, formatNumber(c.mainAuxPing)); setIf(n, 13, formatNumber(c.landPing));
 
-  for (const [prefix, code] of [["案件類別：□", "1"], ["物件用途：□", "1"], ["物件型態：□", c.typeCode]]) {
-    n = findNodes(xml, s => s.startsWith(prefix), prefix); n[0].textContent = n[0].textContent.replace("□", code);
+  for (const [prefix, code] of [["案件類別：□", "1"], ["物件用途：□", c.useCode], ["物件型態：□", c.typeCode]]) {
+    n = findNodes(xml, s => s.startsWith(prefix), prefix);
+    if (code) n[0].textContent = n[0].textContent.replace("□", code);
   }
   n = findNodes(xml, s => s.startsWith("地上樓層：") && s.includes("建物格局"), "樓層格局");
   setIf(n, 2, c.floorsAbove ? String(c.floorsAbove) : ""); setIf(n, 12, c.rooms ? String(c.rooms) : "");
   setIf(n, 14, c.livingRooms ? String(c.livingRooms) : ""); setIf(n, 16, c.bathrooms ? String(c.bathrooms) : "");
   n = findNodes(xml, s => s.startsWith("建物方位：") && s.includes("建物屋齡"), "建物屋齡");
+  setIf(n, 2, c.direction ? `${c.direction}  ` : "");
   setIf(n, 6, formatNumber(c.age, 1)); n[7].textContent = ""; n[8].textContent = "";
   n = findNodes(xml, s => s.startsWith("【售】委託售價："), "委託售價"); setIf(n, 2, formatNumber(c.price, 0));
 
@@ -193,7 +235,9 @@ function patchDocumentXml(xmlText, c) {
   const lines = [...featureCell.getElementsByTagNameNS(W_NS, "p")].filter(p => /^[1-5]\.\s*$/.test(directText(p)));
   if (lines.length !== 5) throw new Error("母版物件特性欄格式不符");
   lines.forEach((p, index) => {
-    const nodes = directTextNodes(p); nodes[0].textContent = `${index + 1}.${c.features[index]}`;
+    const nodes = directTextNodes(p);
+    const feature = c.features[index] || "";
+    nodes[0].textContent = feature ? `${index + 1}.${feature}` : `${index + 1}.`;
     nodes.slice(1).forEach(extra => { extra.textContent = ""; });
   });
   n = findNodes(xml, s => s.startsWith("承辦人：") && s.includes("修正"), "承辦人");
