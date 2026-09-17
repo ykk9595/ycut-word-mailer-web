@@ -2,6 +2,8 @@
 "use strict";
 
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+const PRIMARY_EMAIL = "zook7402@gmail.com";
+const CC_EMAIL = "zook7408@gmail.com";
 const form = document.querySelector("#generator-form");
 const submitButton = document.querySelector("#submit-button");
 const progressPanel = document.querySelector("#progress-panel");
@@ -129,12 +131,6 @@ function extractFeatureLines(description) {
 function normalizeCase(raw) {
   const name = text(raw.caseName);
   const description = text(raw.caseSpec);
-  const parts = name.replace(/[^0-9A-Za-z\u4e00-\u9fff｜|]/g, "").split(/[｜|]/).filter(Boolean);
-  let location = parts.find(part => ["中山醫", "捷運", "車站", "商圈"].some(key => part.includes(key))) || parts[0] || "物件";
-  const keyword = ["中山醫", "捷運", "車站", "商圈"].find(key => location.includes(key));
-  if (keyword) location = keyword;
-  let layout = [...parts].reverse().find(part => part.includes("房")) || "";
-  layout = layout.match(/大兩房|小兩房|[一二三四五六七八九0-9]房|兩房/)?.[0] || layout;
 
   const featureRules = [
     [["前後陽台", "通風"], "前後陽台通風"],
@@ -160,7 +156,7 @@ function normalizeCase(raw) {
   const useCode = mapUseCode(raw.useCode || raw.useCodeName);
 
   return {
-    listingNo: text(raw.nCaseNo), caseName: name, shortName: `${location}${layout}`.slice(0, 12),
+    listingNo: text(raw.nCaseNo), caseName: name,
     buildingName: text(raw.buildingName), address: text(raw.addrSimp),
     landPing: number(raw.landShPin), totalPing: number(raw.buiTotPin),
     mainAuxPing: number(raw.buiMPin) + number(raw.buiAuxPin), typeCode, useCode,
@@ -200,7 +196,7 @@ function patchDocumentXml(xmlText, c) {
   const xml = new DOMParser().parseFromString(xmlText, "application/xml");
   if (xml.querySelector("parsererror")) throw new Error("Word 母版 XML 無法解析");
   let n = findNodes(xml, s => s.startsWith("編號：") && s.includes("大樓/社區名稱"), "表頭");
-  setIf(n, 1, `${c.listingNo}  `); setIf(n, 4, c.shortName); n[5].textContent = "  "; n[6].textContent = "  ";
+  setIf(n, 1, `${c.listingNo}  `); setIf(n, 4, c.caseName); n[5].textContent = "  "; n[6].textContent = "  ";
   setIf(n, 8, c.buildingName); n[9].textContent = " "; n[10].textContent = " ";
 
   n = findNodes(xml, s => s.startsWith("所有權人：") && s.includes("屬性：□"), "交易屬性");
@@ -266,17 +262,42 @@ function downloadWord(blob, filename) {
   anchor.href = url; anchor.download = filename; document.body.append(anchor); anchor.click(); anchor.remove();
 }
 
-async function sendByEmail(blob, filename, caseData, sourceUrl, primary, cc) {
-  const data = new FormData();
-  data.append("attachment", new File([blob], filename, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
-  data.append("_subject", `物件明細表｜${caseData.listingNo} ${caseData.shortName}`);
-  data.append("_template", "table"); data.append("_captcha", "false"); data.append("_honey", "");
-  data.append("案件編號", caseData.listingNo); data.append("案件名稱", caseData.shortName); data.append("資料來源", sourceUrl);
-  if (cc) data.append("_cc", cc);
-  const response = await fetch(`https://formsubmit.co/ajax/${primary}`, { method: "POST", headers: { Accept: "application/json" }, body: data });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || result.success === false) throw new Error(result.message || `寄信服務回應錯誤（${response.status}）`);
-  return result;
+function appendHidden(formElement, name, value) {
+  const input = document.createElement("input");
+  input.type = "hidden"; input.name = name; input.value = value;
+  formElement.append(input);
+}
+
+async function sendByEmail(blob, filename, caseData, sourceUrl) {
+  if (blob.size > 10 * 1024 * 1024) throw new Error("Word 附件超過寄信服務的 10MB 上限");
+
+  const mailForm = document.createElement("form");
+  mailForm.method = "POST";
+  mailForm.action = `https://formsubmit.co/${PRIMARY_EMAIL}`;
+  mailForm.enctype = "multipart/form-data";
+  mailForm.target = "mail-submit-frame";
+  mailForm.hidden = true;
+
+  const attachment = document.createElement("input");
+  attachment.type = "file";
+  attachment.name = "attachment";
+  const transfer = new DataTransfer();
+  transfer.items.add(new File([blob], filename, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
+  attachment.files = transfer.files;
+  mailForm.append(attachment);
+
+  appendHidden(mailForm, "_subject", `物件明細表｜${caseData.listingNo} ${caseData.caseName}`);
+  appendHidden(mailForm, "_template", "table");
+  appendHidden(mailForm, "_captcha", "false");
+  appendHidden(mailForm, "_cc", CC_EMAIL);
+  appendHidden(mailForm, "_url", window.location.href);
+  appendHidden(mailForm, "案件編號", caseData.listingNo);
+  appendHidden(mailForm, "案件名稱", caseData.caseName);
+  appendHidden(mailForm, "資料來源", sourceUrl);
+
+  document.body.append(mailForm);
+  mailForm.submit();
+  window.setTimeout(() => mailForm.remove(), 1500);
 }
 
 downloadAgain.addEventListener("click", () => {
@@ -289,8 +310,6 @@ form.addEventListener("submit", async event => {
   event.preventDefault();
   submitButton.disabled = true; resultPanel.hidden = true; lastDownload = null;
   const sourceUrl = document.querySelector("#case-url").value.trim();
-  const primary = document.querySelector("#primary-email").value.trim();
-  const cc = document.querySelector("#cc-email").value.trim();
   const shouldSend = document.querySelector("#send-email").checked;
   try {
     setProgress(12, "正在讀取 YCut 案件資料…");
@@ -302,13 +321,13 @@ form.addEventListener("submit", async event => {
     let mailMessage = "Word 已下載到本機。";
     if (shouldSend) {
       setProgress(86, "正在寄送 Word 附件…");
-      const response = await sendByEmail(generated.blob, generated.filename, generated.caseData, sourceUrl, primary, cc);
-      mailMessage = response.message || `Word 已寄到 ${primary}${cc ? `，副本 ${cc}` : ""}。`;
+      await sendByEmail(generated.blob, generated.filename, generated.caseData, sourceUrl);
+      mailMessage = "Word 已下載，附件寄送已送出。請稍候查看信箱。";
     }
     setProgress(100, "完成");
     showResult({
       ok: true, title: "物件明細表已完成", message: mailMessage,
-      summary: [["案件編號", generated.caseData.listingNo], ["案件名稱", generated.caseData.shortName], ["檔案名稱", generated.filename]]
+      summary: [["案件編號", generated.caseData.listingNo], ["案件名稱", generated.caseData.caseName], ["檔案名稱", generated.filename]]
     });
   } catch (error) {
     showResult({ ok: false, title: "處理未完成", message: error instanceof Error ? error.message : String(error) });

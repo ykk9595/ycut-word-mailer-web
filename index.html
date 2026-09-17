@@ -14,7 +14,7 @@
       <div class="brand-icon" aria-hidden="true">🏠</div>
       <div>
         <h1>YCut 物件明細表產生器</h1>
-        <p>貼上案件網址，自動產生 Word 並寄到指定信箱。</p>
+        <p>貼上案件網址，自動產生 Word 並寄到預設信箱。</p>
       </div>
     </header>
 
@@ -24,17 +24,6 @@
         <label for="case-url">YCut 案件網址</label>
         <input id="case-url" name="case-url" type="url" required autocomplete="url"
           placeholder="https://www.ycut.com.tw/case-info/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-
-        <div class="email-grid">
-          <div>
-            <label for="primary-email">主要收件信箱</label>
-            <input id="primary-email" type="email" value="zook7402@gmail.com" required autocomplete="email">
-          </div>
-          <div>
-            <label for="cc-email">副本信箱</label>
-            <input id="cc-email" type="email" value="zook7408@gmail.com" autocomplete="email">
-          </div>
-        </div>
 
         <label class="check-row">
           <input id="send-email" type="checkbox" checked>
@@ -65,7 +54,7 @@
 
     <aside class="notice">
       <strong>第一次寄信需要啟用</strong>
-      <p>首次使用時，FormSubmit 會寄確認信到主要收件信箱。點擊信中的啟用連結後，再按一次「產生 Word 並寄出」即可收到附件。</p>
+      <p>首次使用時，FormSubmit 會寄出確認信。點擊信中的啟用連結後，再按一次「產生 Word 並寄出」即可收到附件。</p>
     </aside>
 
     <footer>
@@ -74,6 +63,8 @@
       <span>Word 會同步下載到本機</span>
     </footer>
   </main>
+
+  <iframe id="mail-submit-frame" name="mail-submit-frame" title="郵件附件寄送" hidden></iframe>
 
   <script src="vendor/jszip.min.js"></script>
   <script src="app.js"></script>

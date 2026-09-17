@@ -103,13 +103,6 @@ input:focus {
   box-shadow: 0 0 0 4px rgba(7, 148, 93, .13);
 }
 
-.email-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 20px;
-}
-
 .check-row {
   display: flex;
   align-items: center;
@@ -220,7 +213,6 @@ footer {
   .page-header { justify-content: flex-start; }
   .brand-icon { width: 46px; height: 46px; font-size: 25px; }
   .page-header p { font-size: .9rem; }
-  .email-grid { grid-template-columns: 1fr; }
   .card { border-radius: 13px; }
   footer { display: block; text-align: center; line-height: 1.8; }
   footer span[aria-hidden] { display: none; }
