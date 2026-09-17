@@ -12,7 +12,21 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="shell">
+  <section id="access-gate" class="access-gate" aria-labelledby="password-title">
+    <div class="password-card">
+      <div class="brand-icon" aria-hidden="true">🏠</div>
+      <h1 id="password-title">物件明細表產生器</h1>
+      <p>請輸入密碼後開啟網站。</p>
+      <form id="password-form">
+        <label for="site-password">密碼</label>
+        <input id="site-password" type="password" inputmode="numeric" autocomplete="current-password" required autofocus>
+        <button class="primary-button" type="submit">開啟網站</button>
+        <p id="password-error" class="password-error" role="alert" hidden>密碼錯誤，請重新輸入。</p>
+      </form>
+    </div>
+  </section>
+
+  <main id="site-content" class="shell" hidden>
     <header class="page-header">
       <div class="brand-icon" aria-hidden="true">🏠</div>
       <div>
@@ -65,6 +79,6 @@
   <iframe id="mail-submit-frame" name="mail-submit-frame" title="郵件附件寄送" hidden></iframe>
 
   <script src="vendor/jszip.min.js"></script>
-  <script src="app.js?v=20260917-6"></script>
+  <script src="app.js?v=20260917-7"></script>
 </body>
 </html>

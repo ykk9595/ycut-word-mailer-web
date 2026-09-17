@@ -4,6 +4,13 @@
 const W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const PRIMARY_EMAIL = "zook7402@gmail.com";
 const CC_EMAIL = "zook7408@gmail.com";
+const SITE_PASSWORD = "1688";
+const ACCESS_SESSION_KEY = "property-sheet-access";
+const accessGate = document.querySelector("#access-gate");
+const siteContent = document.querySelector("#site-content");
+const passwordForm = document.querySelector("#password-form");
+const passwordInput = document.querySelector("#site-password");
+const passwordError = document.querySelector("#password-error");
 const form = document.querySelector("#generator-form");
 const submitButton = document.querySelector("#submit-button");
 const progressPanel = document.querySelector("#progress-panel");
@@ -17,6 +24,36 @@ const caseSummary = document.querySelector("#case-summary");
 const downloadAgain = document.querySelector("#download-again");
 
 let lastDownload = null;
+
+function unlockSite() {
+  accessGate.hidden = true;
+  siteContent.hidden = false;
+  document.querySelector("#case-url").focus();
+}
+
+try {
+  if (sessionStorage.getItem(ACCESS_SESSION_KEY) === "granted") unlockSite();
+} catch {
+  // The password gate still works if browser storage is unavailable.
+}
+
+passwordForm.addEventListener("submit", event => {
+  event.preventDefault();
+  if (passwordInput.value !== SITE_PASSWORD) {
+    passwordError.hidden = false;
+    passwordInput.value = "";
+    passwordInput.focus();
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(ACCESS_SESSION_KEY, "granted");
+  } catch {
+    // Continue without remembering access for this tab.
+  }
+  passwordError.hidden = true;
+  unlockSite();
+});
 
 function setProgress(percent, text) {
   progressPanel.hidden = false;

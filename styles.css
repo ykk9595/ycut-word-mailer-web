@@ -27,6 +27,34 @@ body {
 
 button, input { font: inherit; }
 
+.access-gate {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.password-card {
+  width: min(440px, 100%);
+  padding: 36px;
+  border: 1px solid rgba(220, 228, 223, .9);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 14px 40px rgba(22, 45, 34, .10);
+  text-align: center;
+}
+
+.password-card .brand-icon { margin: 0 auto 18px; }
+.password-card > p { margin-bottom: 24px; color: var(--muted); }
+.password-card form { text-align: left; }
+.password-card .primary-button { margin-top: 18px; }
+.password-error {
+  margin: 14px 0 0;
+  color: var(--danger);
+  font-weight: 700;
+  text-align: center;
+}
+
 .shell {
   width: min(920px, calc(100% - 32px));
   margin: 0 auto;
@@ -85,7 +113,7 @@ label {
   font-weight: 700;
 }
 
-input[type="url"], input[type="email"] {
+input[type="url"], input[type="email"], input[type="password"] {
   width: 100%;
   min-height: 50px;
   padding: 11px 14px;
