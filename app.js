@@ -91,6 +91,15 @@ function formatPhone(value) {
   return /^09\d{8}$/.test(digits) ? `${digits.slice(0, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}` : text(value);
 }
 
+function safeFilename(value, fallback) {
+  let filename = text(value)
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
+    .replace(/[. ]+$/g, "")
+    .trim();
+  if (!filename || /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(filename)) filename = fallback;
+  return Array.from(filename).slice(0, 120).join("");
+}
+
 function mapUseCode(value) {
   const name = text(value);
   if (/住宅|住家/.test(name)) return "1";
@@ -250,7 +259,8 @@ async function generateWord(raw) {
   if (!documentPart) throw new Error("Word 母版缺少 document.xml");
   zip.file("word/document.xml", patchDocumentXml(await documentPart.async("text"), caseData), { createFolders: false });
   const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
-  const filename = `物件明細表_${caseData.listingNo || "未編號"}.docx`;
+  const fallbackName = `物件明細表_${caseData.listingNo || "未編號"}`;
+  const filename = `${safeFilename(caseData.caseName, fallbackName)}.docx`;
   return { blob, filename, caseData };
 }
 
