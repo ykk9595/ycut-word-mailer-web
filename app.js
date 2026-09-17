@@ -129,6 +129,33 @@ function mapTypeCode(value) {
   return "";
 }
 
+function mapManagementFeeCode(value) {
+  const name = text(value);
+  if (/^無$/.test(name)) return "1";
+  if (/^月繳$/.test(name)) return "2";
+  if (/雙月繳/.test(name)) return "3";
+  if (/季繳/.test(name)) return "4";
+  if (/半年繳/.test(name)) return "5";
+  if (/^年繳$/.test(name)) return "6";
+  if (/一次繳/.test(name)) return "7";
+  return "";
+}
+
+function mapParkingTypeCode(value, hasParking) {
+  const name = text(value).replace(/／/g, "/");
+  if (/坡道\/平面/.test(name)) return "1";
+  if (/坡道\/機械/.test(name)) return "2";
+  if (/昇降\/平面/.test(name)) return "3";
+  if (/昇降\/機械/.test(name)) return "4";
+  if (/平移\/機械/.test(name)) return "5";
+  if (/庭院/.test(name)) return "6";
+  if (/獨立車庫/.test(name)) return "7";
+  if (/機械循環|停車塔/.test(name)) return "8";
+  if (/騎樓/.test(name)) return "10";
+  if (/^無$/.test(name) || !hasParking) return "9";
+  return name ? "11" : "";
+}
+
 function extractFeatureLines(description) {
   return text(description)
     .split(/\r?\n/)
@@ -163,6 +190,8 @@ function normalizeCase(raw) {
   const allText = `${name}\n${description}`;
   const typeCode = mapTypeCode(raw.typeCode || raw.typeCodeName);
   const useCode = mapUseCode(raw.useCode || raw.useCodeName);
+  const parkingSpace = text(raw.parkingSpace);
+  const hasParking = Boolean(parkingSpace) && !/^(無|否|0)$/.test(parkingSpace);
 
   return {
     listingNo: text(raw.nCaseNo), caseName: name,
@@ -170,6 +199,9 @@ function normalizeCase(raw) {
     landPing: number(raw.landShPin), totalPing: number(raw.buiTotPin),
     mainAuxPing: number(raw.buiMPin) + number(raw.buiAuxPin), typeCode, useCode,
     direction: text(raw.positionName || raw.position || raw.direction),
+    managementFee: number(raw.mgExpense), managementFeeCode: mapManagementFeeCode(raw.mgCode),
+    parkingNo: text(raw.parkingNO), parkingTypeCode: mapParkingTypeCode(raw.parkingMode, hasParking),
+    parkingUseCode: hasParking ? "2" : "1",
     primarySchool: text(raw.priSchoolName).replace(/^市立/, ""),
     juniorSchool: text(raw.junSchoolName).replace(/^市立/, ""),
     age: number(raw.buiYear), floorsAbove: Math.trunc(number(raw.upFloor)),
@@ -224,11 +256,17 @@ function patchDocumentXml(xmlText, c) {
   n = findNodes(xml, s => s.startsWith("建物方位：") && s.includes("建物屋齡"), "建物屋齡");
   setIf(n, 2, c.direction ? `${c.direction}  ` : "");
   setIf(n, 6, formatNumber(c.age, 1)); n[7].textContent = ""; n[8].textContent = "";
+  n = findNodes(xml, s => s.startsWith("建物管理費：") && s.includes("繳費方式"), "建物管理費");
+  setIf(n, 2, c.managementFee ? formatNumber(c.managementFee, 0) : "");
+  if (c.managementFeeCode) n[10].textContent = c.managementFeeCode;
   n = findNodes(xml, s => s.startsWith("【售】委託售價："), "委託售價"); setIf(n, 2, formatNumber(c.price, 0));
 
-  for (const [prefix, code] of [["車位產權：□", "1"], ["車位種類：□", "9"], ["使用狀況：□", "1"]]) {
-    n = findNodes(xml, s => s.startsWith(prefix), prefix); n[0].textContent = n[0].textContent.replace("□", code);
+  for (const [prefix, code] of [["車位產權：□", "1"], ["車位種類：□", c.parkingTypeCode], ["使用狀況：□", c.parkingUseCode]]) {
+    n = findNodes(xml, s => s.startsWith(prefix), prefix);
+    if (code) n[0].textContent = n[0].textContent.replace("□", code);
   }
+  n = findNodes(xml, s => s.startsWith("位置：在") && s.includes("車位編號"), "車位編號");
+  setIf(n, 5, c.parkingNo);
   n = findNodes(xml, s => s.startsWith("小學學區：") && s.includes("高中或大學"), "學區");
   setIf(n, 1, c.primarySchool); setIf(n, 5, c.juniorSchool); setIf(n, 9, c.college);
   n = findNodes(xml, s => s.startsWith("市場購物：") && s.includes("醫療機構"), "生活環境");
