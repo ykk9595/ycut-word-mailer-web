@@ -196,16 +196,6 @@ input:focus {
 }
 .notice p { margin: 3px 0 0; }
 
-footer {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 24px;
-  color: var(--muted);
-  font-size: .9rem;
-}
-
 [hidden] { display: none !important; }
 
 @media (max-width: 660px) {
@@ -214,6 +204,4 @@ footer {
   .brand-icon { width: 46px; height: 46px; font-size: 25px; }
   .page-header p { font-size: .9rem; }
   .card { border-radius: 13px; }
-  footer { display: block; text-align: center; line-height: 1.8; }
-  footer span[aria-hidden] { display: none; }
 }

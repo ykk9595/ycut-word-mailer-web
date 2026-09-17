@@ -366,7 +366,9 @@ downloadAgain.addEventListener("click", () => {
 form.addEventListener("submit", async event => {
   event.preventDefault();
   submitButton.disabled = true; resultPanel.hidden = true; lastDownload = null;
-  const sourceUrl = document.querySelector("#case-url").value.trim();
+  const caseUrlInput = document.querySelector("#case-url");
+  const sourceUrl = caseUrlInput.value.trim();
+  caseUrlInput.value = "";
   const shouldSend = document.querySelector("#send-email").checked;
   try {
     setProgress(12, "正在讀取 YCut 案件資料…");
