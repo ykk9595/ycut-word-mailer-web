@@ -234,6 +234,15 @@ function patchDocumentXml(xmlText, c) {
   n = findNodes(xml, s => s.startsWith("市場購物：") && s.includes("醫療機構"), "生活環境");
   setIf(n, 1, c.shopping); setIf(n, 4, c.park); setIf(n, 6, c.hospital); n[7].textContent = ""; n[8].textContent = "";
 
+  n = findNodes(xml, s => s.startsWith("開發人員比例：") && s.includes("開發銷售比例"), "開發人員比例");
+  if (n.length < 22) throw new Error("母版開發人員比例欄格式不符");
+  [n[3].textContent, n[5].textContent, n[7].textContent, n[9].textContent] = [" 明仁", "50 ", " ]  [ 媛宜", "50 "];
+  [n[15].textContent, n[19].textContent] = ["[ 50 ", "50 "];
+
+  n = findNodes(xml, s => s.includes("外商圈說明書簽名："), "外商圈說明書簽名");
+  if (n.length < 16) throw new Error("母版外商圈說明書簽名欄格式不符");
+  n[15].textContent = "楊明仁";
+
   const cells = [...xml.getElementsByTagNameNS(W_NS, "tc")];
   const featureCell = cells.find(cell => cell.textContent.includes("物件特性：") && cell.textContent.includes("帶看方式"));
   if (!featureCell) throw new Error("母版找不到物件特性欄");
